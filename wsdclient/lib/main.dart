@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -29,10 +30,11 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final _apiKeyWeather = "31c33ba0fa0fbe84f0af7ae3778818ce";
   int _counter = 0;
   int _cityIndex = 0;
 
-  final _cities = ["大阪", "名古屋", "東京"];
+  final _cities = [("大阪", "osaka"), ("名古屋", "nagoya"), ("東京", "tokyo")];
 
   void _incrementCounter() {
     setState(() {
@@ -54,7 +56,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Expanded(
                 flex: 1,
                 child: Row(children: [
-                  Expanded(flex: 3, child: Text(_cities[_cityIndex])),
+                  Expanded(flex: 3, child: Text(_cities[_cityIndex].$1)),
                   Expanded(flex: 1, child: Text("天気")),
                 ])),
             Expanded(flex: 4, child: Placeholder()),
@@ -62,10 +64,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 flex: 2,
                 child: ElevatedButton(
                     child: Text("change the city"),
-                    onPressed: () {
+                    onPressed: () async {
                       setState(() {
                         _cityIndex = (_cityIndex + 1) % _cities.length;
                       });
+                      final resp = await http.get(Uri.parse(
+                          "https://api.openweathermap.org/data/2.5/weather?q=${_cities[_cityIndex].$2}&appid=$_apiKeyWeather"));
+                      print(resp.body);
                     })),
           ],
         ),
