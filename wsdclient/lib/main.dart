@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
@@ -45,6 +46,17 @@ class _MyHomePageState extends State<MyHomePage> {
     ("ロンドン", "london"),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((sp) {
+      setState(() {
+        final int? i = sp.getInt('city');
+        if (i != null) _cityIndex = i;
+      });
+    });
+  }
+
   void _incrementCounter() {
     setState(() {
       _counter++;
@@ -77,6 +89,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           setState(() {
                             if (newVal != null) _cityIndex = newVal;
                           });
+                          final sp = await SharedPreferences.getInstance();
+                          sp.setInt('city', _cityIndex);
                           final resp = await http.get(Uri.parse(
                               "https://api.openweathermap.org/data/2.5/weather?q=${_cities[_cityIndex].$2}&appid=$_apiKeyWeather"));
                           if (resp.statusCode == 200) {
