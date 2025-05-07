@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -37,6 +42,7 @@ class _MyHomePageState extends State<MyHomePage> {
   int _cityIndex = 0;
   String _weatherText = "---";
   String? _iconId;
+  String _note = "";
 
   final _cities = [
     ("大阪", "osaka"),
@@ -54,6 +60,12 @@ class _MyHomePageState extends State<MyHomePage> {
         final int? i = sp.getInt('city');
         if (i != null) _cityIndex = i;
       });
+    });
+    FirebaseFirestore.instance.collection('collection').get().then((q) {
+      for (var i in q.docs) {
+        print(i.data());
+      }
+      ;
     });
   }
 
@@ -113,6 +125,18 @@ class _MyHomePageState extends State<MyHomePage> {
                               "https://openweathermap.org/img/wn/$_iconId@4x.png")),
                 ])),
             Expanded(flex: 4, child: Placeholder()),
+            Expanded(flex: 1, child: Text(_note)),
+            Expanded(
+                flex: 1,
+                child: TextField(
+                  onSubmitted: (newText) async {
+                    setState(() {
+                      _note = newText;
+                    });
+                    final db = FirebaseFirestore.instance;
+                    await db.collection("collection").add({'note': _note});
+                  },
+                )),
             Expanded(flex: 2, child: Placeholder()),
           ],
         ),
