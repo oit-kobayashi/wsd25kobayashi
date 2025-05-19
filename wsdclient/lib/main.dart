@@ -1,9 +1,13 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:image_picker/image_picker.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -38,8 +42,9 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final _apiKeyWeather = "31c33ba0fa0fbe84f0af7ae3778818ce";
-  int _counter = 0;
   int _cityIndex = 0;
+  Uint8List? _imgData;
+  String? _imgUrl;
   String _weatherText = "---";
   String? _iconId;
   String _note = "";
@@ -66,12 +71,6 @@ class _MyHomePageState extends State<MyHomePage> {
         print(i.data());
       }
       ;
-    });
-  }
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
     });
   }
 
@@ -124,7 +123,13 @@ class _MyHomePageState extends State<MyHomePage> {
                           : Image.network(
                               "https://openweathermap.org/img/wn/$_iconId@4x.png")),
                 ])),
-            Expanded(flex: 4, child: Placeholder()),
+            Expanded(
+                flex: 4,
+                child: _imgUrl != null
+                    ? Image.network(_imgUrl!)
+                    : (_imgData != null
+                        ? Image.memory(_imgData!)
+                        : Placeholder())),
             Expanded(flex: 1, child: Text(_note)),
             Expanded(
                 flex: 1,
@@ -142,9 +147,33 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: () {
+          ImagePicker()
+              .pickImage(source: ImageSource.gallery)
+              .then((xfile) async {
+            if (xfile == null) return;
+            Uint8List img = await xfile.readAsBytes();
+            setState(() {
+              _imgData = img;
+              _imgUrl = null;
+            });
+
+            final uri = Uri.parse('https://wsdserver.onrender.com/v1/photos');
+            final req = http.MultipartRequest('POST', uri);
+            final mpf = http.MultipartFile.fromBytes('file', img,
+                filename: 'photo.jpg', contentType: MediaType('image', 'jpeg'));
+            req.files.add(mpf);
+            final resp = await req.send();
+            final respStr = await resp.stream.bytesToString();
+            final respMap = jsonDecode(respStr);
+            setState(() {
+              _imgUrl = 'https://wsdserver.onrender.com${respMap["url"]}';
+              _imgData = null;
+            });
+          });
+        },
         tooltip: 'Increment',
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.image),
       ),
     );
   }
