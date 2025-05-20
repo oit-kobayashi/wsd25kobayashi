@@ -64,6 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
         final int? i = sp.getInt('city');
         if (i != null) _cityIndex = i;
       });
+      _updateWeather();
     });
     FirebaseFirestore.instance.collection('collection').get().then((q) {
       for (var i in q.docs) {
@@ -72,6 +73,18 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       }
     });
+  }
+
+  Future<void> _updateWeather() async {
+    final resp = await http.get(Uri.parse(
+        "https://api.openweathermap.org/data/2.5/weather?q=${_cities[_cityIndex].$2}&appid=$_apiKeyWeather"));
+    if (resp.statusCode == 200) {
+      final Map<String, dynamic> respMap = jsonDecode(resp.body);
+      setState(() {
+        _weatherText = respMap["weather"][0]["main"];
+        _iconId = respMap["weather"][0]["icon"];
+      });
+    }
   }
 
   @override
@@ -104,16 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           });
                           final sp = await SharedPreferences.getInstance();
                           sp.setInt('city', _cityIndex);
-                          final resp = await http.get(Uri.parse(
-                              "https://api.openweathermap.org/data/2.5/weather?q=${_cities[_cityIndex].$2}&appid=$_apiKeyWeather"));
-                          if (resp.statusCode == 200) {
-                            final Map<String, dynamic> respMap =
-                                jsonDecode(resp.body);
-                            setState(() {
-                              _weatherText = respMap["weather"][0]["main"];
-                              _iconId = respMap["weather"][0]["icon"];
-                            });
-                          }
+                          await _updateWeather();
                         },
                         initialSelection: _cityIndex,
                       )),
