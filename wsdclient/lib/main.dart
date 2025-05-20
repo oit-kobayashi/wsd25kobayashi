@@ -44,9 +44,9 @@ class _MyHomePageState extends State<MyHomePage> {
   int _cityIndex = 0;
   String _weatherText = "---";
   String? _iconId;
-  String _note = "";
   Uint8List? _imgBin;
   String? _imgUrl;
+  final List<String> _notes = [];
 
   final _cities = [
     ("大阪", "osaka"),
@@ -67,9 +67,10 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     FirebaseFirestore.instance.collection('collection').get().then((q) {
       for (var i in q.docs) {
-        print(i.data());
+        setState(() {
+          _notes.add(i['note'].toString());
+        });
       }
-      ;
     });
   }
 
@@ -81,6 +82,8 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text("webシステム開発demo"),
       ),
       body: Center(
+          child: Container(
+        padding: EdgeInsets.fromLTRB(10, 10, 4, 4),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: <Widget>[
@@ -129,22 +132,29 @@ class _MyHomePageState extends State<MyHomePage> {
                     : (_imgBin != null
                         ? Image.memory(_imgBin!)
                         : Center(child: Text("no image")))),
-            Expanded(flex: 1, child: Text(_note)),
+            Expanded(
+                flex: 2,
+                child: ListView(children: [
+                  for (var i = 0; i < _notes.length; i++)
+                    Card(
+                        child: ListTile(
+                            title: Text(_notes[i]),
+                            leading: Text(i.toString())))
+                ])),
             Expanded(
                 flex: 1,
                 child: TextField(
                   onSubmitted: (newText) async {
                     setState(() {
-                      _note = newText;
+                      _notes.add(newText);
                     });
                     final db = FirebaseFirestore.instance;
-                    await db.collection("collection").add({'note': _note});
+                    await db.collection("collection").add({'note': newText});
                   },
                 )),
-            Expanded(flex: 2, child: Placeholder()),
           ],
         ),
-      ),
+      )),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           ImagePicker()
