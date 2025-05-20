@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:image_picker/image_picker.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -38,11 +41,12 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final _apiKeyWeather = "31c33ba0fa0fbe84f0af7ae3778818ce";
-  int _counter = 0;
   int _cityIndex = 0;
   String _weatherText = "---";
   String? _iconId;
   String _note = "";
+  Uint8List? _imgBin;
+  String? _imgUrl;
 
   final _cities = [
     ("大阪", "osaka"),
@@ -66,12 +70,6 @@ class _MyHomePageState extends State<MyHomePage> {
         print(i.data());
       }
       ;
-    });
-  }
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
     });
   }
 
@@ -124,7 +122,13 @@ class _MyHomePageState extends State<MyHomePage> {
                           : Image.network(
                               "https://openweathermap.org/img/wn/$_iconId@4x.png")),
                 ])),
-            Expanded(flex: 4, child: Placeholder()),
+            Expanded(
+                flex: 4,
+                child: _imgUrl != null
+                    ? Image.network(_imgUrl!)
+                    : (_imgBin != null
+                        ? Image.memory(_imgBin!)
+                        : Center(child: Text("no image")))),
             Expanded(flex: 1, child: Text(_note)),
             Expanded(
                 flex: 1,
@@ -142,9 +146,33 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+        onPressed: () {
+          ImagePicker()
+              .pickImage(source: ImageSource.gallery)
+              .then((xfile) async {
+            if (xfile == null) return;
+            Uint8List img = await xfile.readAsBytes();
+            setState(() {
+              _imgBin = img;
+              _imgUrl = null;
+            });
+            const srv = "https://wsdserver.onrender.com";
+            final uri = Uri.parse('$srv/v1/photos');
+            final req = http.MultipartRequest('POST', uri);
+            final mpf = http.MultipartFile.fromBytes('file', img,
+                filename: 'foo.jpg', contentType: MediaType('image', 'jpeg'));
+            req.files.add(mpf);
+            final resp = await req.send();
+            final respStr = await resp.stream.bytesToString();
+            final respMap = jsonDecode(respStr);
+            setState(() {
+              _imgUrl = "$srv/${respMap['url']}";
+              _imgBin = null;
+            });
+          });
+        },
+        tooltip: 'Select image',
+        child: const Icon(Icons.image),
       ),
     );
   }
